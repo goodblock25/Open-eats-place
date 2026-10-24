@@ -144,12 +144,10 @@
 
             <!-- 실시간 검색 리스트 드롭다운 -->
             <div id="search-suggestions" class="hidden pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-black/[0.06] overflow-hidden max-h-60 overflow-y-auto no-scrollbar">
-                <!-- JS 렌더링 -->
             </div>
 
             <!-- 카테고리 칩 -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto pb-1" id="categoryChips">
-                <!-- JS 렌더링 -->
             </div>
         </div>
     </div>
@@ -290,7 +288,7 @@
     </div>
 </div>
 
-<!-- 카테고리 관리 모달 (비율 넘침 해결) -->
+<!-- 카테고리 관리 모달 -->
 <div id="category-admin-modal" class="hidden fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
         <div class="flex justify-between items-center mb-5">
@@ -429,10 +427,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTempLocation = null;
     let tempCompressedImage = null;
 
-    /* --- 지도 초기화 --- */
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([37.4765, 126.9635], 16);
+    /* --- 지도 초기화 (줌 컨트롤 제거 완료) --- */
+    const map = L.map('map', { 
+        zoomControl: false, 
+        attributionControl: false 
+    }).setView([37.4765, 126.9635], 16);
+
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
     const markersLayer = L.layerGroup().addTo(map);
 
     /* --- GPS 내 위치 추적 --- */
@@ -478,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 });
     });
 
-    /* --- SHA-256 단방향 해시 비밀번호 로직 (원본 노출 방지) --- */
+    /* --- SHA-256 해시 비밀번호 로직 (원본 주석 완전 삭제) --- */
     async function sha256(message) {
         const msgBuffer = new TextEncoder().encode(message);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -486,7 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // 'fhqhxm3##'의 SHA-256 해시값 (역추적 불가)
     const TARGET_PASSWORD_HASH = 'e93e38bec834d416f993be047fc77eae91b774b9ae62d0f78594b1a7e3a4dd7f';
 
     let clickCount = 0;
