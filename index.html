@@ -15,7 +15,7 @@
     <link rel="icon" href="./icon.png" type="image/png">
     <link rel="apple-touch-icon" href="./icon.png">
 
-    <!-- 웹 매니페스트 (오류 유발 서비스워커 제거 및 maskable 규격 적용) -->
+    <!-- 웹 매니페스트 -->
     <link rel="manifest" id="manifest-link">
     <script>
         const manifestData = {
@@ -240,8 +240,9 @@
             </div>
         </div>
 
+        <!-- 상세 정보 바로가기 버튼 (수정된 부분) -->
         <a id="sheet-link-btn" href="#" target="_blank" class="w-full block bg-red-50 text-red-600 text-center py-4 rounded-2xl font-bold border border-red-100 shadow-sm active:bg-red-100 transition text-[15px]">
-            💌 <span id="txt-link-btn">상세정보</span>
+            ℹ️ <span id="txt-link-btn">상세 정보</span>
         </a>
     </div>
     <button id="close-sheet-btn" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
@@ -272,8 +273,8 @@
             <select id="input-category" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition">
             </select>
 
-            <label class="block text-sm font-bold text-gray-700 mb-1.5">영상 / 연결 링크</label>
-            <input type="text" id="input-link" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition" placeholder="유튜브, 인스타, 웹사이트 링크">
+            <label class="block text-sm font-bold text-gray-700 mb-1.5">상세 정보 / 연결 링크</label>
+            <input type="text" id="input-link" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition" placeholder="지도 상세 링크, 인스타, 웹사이트 등">
 
             <label class="block text-sm font-bold text-gray-700 mb-1.5">사진 첨부 (선택)</label>
             <div class="w-full bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center mb-8 relative">
@@ -338,13 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    /* --- 2. 다국어 사전 (내장 기본 사전 + 외부 dict.json 자동 병합) --- */
+    /* --- 2. 다국어 사전 (linkBtn 문구를 '상세 정보' 계열로 반영) --- */
     let currentLang = localStorage.getItem('app_lang') || 'ko';
     
     const i18n = {
         ko: {
             all: '전체', searchPlaceholder: '장소명 또는 태그 검색', creatorBadge: '제작자',
-            linkBtn: '영상 / 링크 바로가기', viewPhoto: '자세히 보기',
+            linkBtn: '상세 정보', viewPhoto: '자세히 보기',
             alertTitle: '알림',
             gpsDenied: '위치 권한이 거부되었습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.',
             gpsUnavailable: '현재 위치 정보를 수신할 수 없습니다.\n잠시 후 다시 시도해주세요.',
@@ -354,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         en: {
             all: 'All', searchPlaceholder: 'Search place or tag', creatorBadge: 'Creator',
-            linkBtn: 'Watch Video / Link', viewPhoto: 'View Photo',
+            linkBtn: 'View Details', viewPhoto: 'View Photo',
             alertTitle: 'Notice',
             gpsDenied: 'Location permission denied.\nPlease allow location access in your browser settings.',
             gpsUnavailable: 'Location information unavailable.\nPlease try again in a moment.',
@@ -364,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         ja: {
             all: 'すべて', searchPlaceholder: 'スポット名またはタグで検索', creatorBadge: '制作者',
-            linkBtn: '動画 / リンクを見る', viewPhoto: '写真を見る',
+            linkBtn: '詳細情報', viewPhoto: '写真を見る',
             alertTitle: 'お知らせ',
             gpsDenied: '位置情報の利用が拒否されました。\nブラウザの設定で許可してください。',
             gpsUnavailable: '現在地を取得できません。\nしばらくしてからもう一度お試しください。',
@@ -374,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         zh: {
             all: '全部', searchPlaceholder: '搜索地点或标签', creatorBadge: '创作者',
-            linkBtn: '查看视频 / 链接', viewPhoto: '查看大图',
+            linkBtn: '详细信息', viewPhoto: '查看大图',
             alertTitle: '提示',
             gpsDenied: '位置权限已被拒绝。\n请在浏览器设置中开启定位权限。',
             gpsUnavailable: '无法获取当前位置信息。\n请稍后再试。',
@@ -384,7 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 기본 내장 사전 (dict.json 로딩 전 즉시 작동)
     let termDict = {
         '식당': { en: 'Restaurant', ja: '食堂/グルメ', zh: '餐厅' },
         '카페': { en: 'Cafe', ja: 'カフェ', zh: '咖啡馆' },
@@ -405,11 +405,8 @@ document.addEventListener('DOMContentLoaded', () => {
         '약국': { en: 'Pharmacy', ja: '薬局', zh: '药店' },
         '공원': { en: 'Park', ja: '公園', zh: '公园' },
         '산책로': { en: 'Walking Trail', ja: '散歩道', zh: '散步道' },
-        '테스트': { en: 'Test', ja: 'テスト', zh: '测试' },
-        '테스트2': { en: 'Test 2', ja: 'テスト2', zh: '测试2' }
     };
 
-    // 저장소에 dict.json 파일이 있으면 비동기로 최신 단어장 추가 로드
     fetch('./dict.json?v=' + Date.now())
         .then(res => res.json())
         .then(data => {
@@ -601,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBottomSheet();
     });
 
-    /* --- 7. 카테고리 & 마커 렌더링 (초근접 마커 자동 분산 탑재) --- */
+    /* --- 7. 카테고리 & 마커 렌더링 (초근접 마커 자동 분산) --- */
     function renderCategories() {
         const chipsContainer = document.getElementById('categoryChips');
         chipsContainer.innerHTML = '';
@@ -663,7 +660,6 @@ document.addEventListener('DOMContentLoaded', () => {
         markersLayer.clearLayers();
         let filtered = currentFilter === '전체' ? places : places.filter(p => p.category === currentFilter);
 
-        // 1단계: 초근접(약 18m 이내) 겹침 마커 그룹핑
         const groups = [];
         const threshold = 0.00018;
 
@@ -682,7 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!added) groups.push([place]);
         });
 
-        // 2단계: 겹친 마커는 부채꼴/원형으로 살짝 띄워 렌더링
         groups.forEach(group => {
             const count = group.length;
 
@@ -690,10 +685,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let drawLat = place.lat;
                 let drawLng = place.lng;
 
-                // 2개 이상 겹친 경우 원형 오프셋 분산 적용
                 if (count > 1) {
                     const angle = (idx / count) * 2 * Math.PI;
-                    const offsetRadius = 0.00014; // 분산 반경 약 15m
+                    const offsetRadius = 0.00014;
                     drawLat = place.lat + offsetRadius * Math.sin(angle);
                     drawLng = place.lng + (offsetRadius * Math.cos(angle)) / Math.cos(place.lat * (Math.PI / 180));
                 }
