@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // DB 필드 우선 조회 (0초 렌더링)
+    // 장소명 다국어 반환
     function getPlaceTitle(p, lang = currentLang) {
         if (!p) return '';
         if (lang === 'en' && p.title_en) return p.title_en;
@@ -372,12 +372,47 @@ document.addEventListener('DOMContentLoaded', () => {
         return p.title || '';
     }
 
+    // 장소 객체 기준 카테고리 다국어 반환
     function getPlaceCategory(p, lang = currentLang) {
         if (!p) return '';
         if (lang === 'en' && p.category_en) return p.category_en;
         if (lang === 'ja' && p.category_ja) return p.category_ja;
         if (lang === 'zh' && p.category_zh) return p.category_zh;
         return p.category || '';
+    }
+
+    // 상단 카테고리 칩 전용 다국어 반환 함수 (장소 DB 캐시 + 기본 사전 자동 연동)
+    function getCategoryDisplayName(cat, lang = currentLang) {
+        if (!cat) return '';
+        if (cat === '전체') return i18n[lang].all;
+        if (lang === 'ko') return cat;
+
+        // 1. 등록된 장소들(places)에서 해당 카테고리의 번역본 탐색
+        const langKey = lang === 'zh' ? 'category_zh' : `category_${lang}`;
+        const matchedPlace = places.find(p => p.category === cat && p[langKey]);
+        if (matchedPlace && matchedPlace[langKey]) {
+            return matchedPlace[langKey];
+        }
+
+        // 2. 기본 내장 카테고리 사전 fallback
+        const baseDict = {
+            '식당': { en: 'Restaurant', ja: '食堂', zh: '餐厅' },
+            '카페': { en: 'Cafe', ja: 'カフェ', zh: '咖啡馆' },
+            '쇼핑': { en: 'Shopping', ja: 'ショッピング', zh: '购物' },
+            '문화': { en: 'Culture', ja: '文化', zh: '文化' },
+            '핫플': { en: 'Hotspot', ja: '人気スポット', zh: '热门' },
+            '편의점': { en: 'Convenience', ja: 'コンビニ', zh: '便利店' },
+            'GS25': { en: 'GS25', ja: 'GS25', zh: 'GS25' },
+            'CU': { en: 'CU', ja: 'CU', zh: 'CU' },
+            '세븐일레븐': { en: '7-Eleven', ja: 'セブン-イレブン', zh: '7-Eleven' },
+            '국밥': { en: 'Gukbap', ja: 'クッパ', zh: '汤饭' },
+            '테스트': { en: 'Test', ja: 'テスト', zh: '测试' }
+        };
+        if (baseDict[cat] && baseDict[cat][lang]) {
+            return baseDict[cat][lang];
+        }
+
+        return cat;
     }
 
     // 거리 계산 (Haversine 공식)
@@ -392,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return R * c;
     }
 
-    // 신규 단어일 때만 1회 온라인 번역 호출
+    // 온라인 실시간 번역 (신규 단어 1회용)
     async function translateTextOnline(text, targetLang) {
         if (!text || !text.trim()) return '';
         try {
@@ -574,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBottomSheet();
     });
 
-    /* --- 7. 카테고리 & 마커 렌더링 (초근접 분산) --- */
+    /* --- 7. 카테고리 칩 & 마커 렌더링 (카테고리 칩 다국어 연동) --- */
     function renderCategories() {
         const chipsContainer = document.getElementById('categoryChips');
         chipsContainer.innerHTML = '';
@@ -588,7 +623,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }`;
             
             let count = (cat === '전체') ? places.length : places.filter(p => p.category === cat).length;
-            let displayCat = cat === '전체' ? i18n[currentLang].all : cat;
+            // 언어별 표시 이름 획득
+            let displayCat = getCategoryDisplayName(cat);
             btn.innerHTML = `${cat === '전체' ? '🌐 ' + displayCat : '#' + displayCat} <span class="${isActive ? 'text-gray-300' : 'text-gray-400'} ml-1">${count}</span>`;
             
             btn.onclick = () => {
@@ -704,7 +740,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const tJa = (p.title_ja || '').toLowerCase();
             const tZh = (p.title_zh || '').toLowerCase();
             const cat = (p.category || '').toLowerCase();
-            return tKo.includes(val) || tEn.includes(val) || tJa.includes(val) || tZh.includes(val) || cat.includes(val);
+            const catEn = (p.category_en || '').toLowerCase();
+            const catJa = (p.category_ja || '').toLowerCase();
+            const catZh = (p.category_zh || '').toLowerCase();
+            return tKo.includes(val) || tEn.includes(val) || tJa.includes(val) || tZh.includes(val) ||
+                   cat.includes(val) || catEn.includes(val) || catJa.includes(val) || catZh.includes(val);
         });
 
         if (filtered.length === 0) {
@@ -913,7 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
             title_ja = cachedTitlePlace.title_ja;
             title_zh = cachedTitlePlace.title_zh;
         } else {
-            // 처음 등장한 이름일 때만 온라인 번역 1회 실행
             const [en, ja, zh] = await Promise.all([
                 translateTextOnline(title, 'en'),
                 translateTextOnline(title, 'ja'),
