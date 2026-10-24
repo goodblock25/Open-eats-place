@@ -37,14 +37,15 @@
         }
     </script>
 
-    <!-- UI 스타일 및 지도 라이브러리 -->
+    <!-- 스타일 및 맵 라이브러리 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- 구글 파이어베이스 SDK (v10 호환 모드) -->
+    <!-- 파이어베이스 SDK (App, Firestore, Auth) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
     <style>
         body { 
@@ -70,7 +71,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 줌 컨트롤러(+,-) 완전 차단 */
         .leaflet-control-zoom { display: none !important; }
 
         .marker-pulse { animation: pulse 2s infinite; }
@@ -111,10 +111,9 @@
     <div class="absolute top-0 left-0 right-0 z-[50] pt-[env(safe-area-inset-top)] pointer-events-none">
         <div class="px-4 pt-4 pb-2 flex flex-col gap-2.5">
             
-            <!-- 검색창, 언어 설정, 비밀 로그인 -->
+            <!-- 검색창, 언어 설정, 관리자 모달 진입 -->
             <div class="flex items-center gap-2 pointer-events-auto">
                 <div class="flex-1 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-black/[0.06] flex items-center px-3.5 py-2.5 relative">
-                    <!-- 돋보기 아이콘 (3회 터치 시 관리자 인증 모달) -->
                     <button id="secret-login-btn" class="mr-2 text-gray-400 active:text-gray-600 focus:outline-none flex-shrink-0" aria-label="Search">
                         <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -126,7 +125,7 @@
                     </button>
                 </div>
 
-                <!-- 다국어 선택 버튼 -->
+                <!-- 다국어 메뉴 버튼 -->
                 <div class="relative">
                     <button id="lang-btn" class="bg-white/95 backdrop-blur-md border border-black/[0.06] shadow-sm px-3 py-2.5 rounded-2xl flex items-center gap-1 text-xs font-bold text-gray-700 active:bg-gray-50">
                         <span>🌐</span>
@@ -140,7 +139,7 @@
                     </div>
                 </div>
                 
-                <!-- 제작자 모드 토글 (초기 숨김) -->
+                <!-- 제작자 모드 스위치 -->
                 <div id="creator-toggle-container" class="hidden bg-white/95 backdrop-blur-md rounded-2xl shadow-sm px-3 py-2.5 flex items-center gap-2 border border-black/[0.06]">
                     <span class="text-xs font-bold text-red-600 whitespace-nowrap" id="txt-creator-badge">제작자</span>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -150,29 +149,28 @@
                 </div>
             </div>
 
-            <!-- 실시간 검색 목록 -->
+            <!-- 검색 추천 리스트 -->
             <div id="search-suggestions" class="hidden pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-black/[0.06] overflow-hidden max-h-60 overflow-y-auto no-scrollbar">
             </div>
 
-            <!-- 카테고리 태그 칩 -->
+            <!-- 카테고리 칩 -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto pb-1" id="categoryChips">
             </div>
         </div>
     </div>
 
-    <!-- 십자선 (위치 지정 모드) -->
+    <!-- 위치 지정 십자선 -->
     <div id="crosshair" class="hidden absolute inset-0 z-[40] flex items-center justify-center pointer-events-none">
         <div class="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center bg-red-500/20">
             <div class="w-2 h-2 bg-red-600 rounded-full"></div>
         </div>
     </div>
 
-    <!-- 지도 화면 -->
+    <!-- 지도 본체 -->
     <div id="map"></div>
 
-    <!-- 우측 하단 버튼군 (내 위치 + 제작자 등록 FAB) -->
+    <!-- 우측 하단 조작 버튼 (GPS + 추가 FAB) -->
     <div class="absolute bottom-6 right-4 z-[50] flex flex-col items-end gap-3 pointer-events-auto pb-[env(safe-area-inset-bottom)]">
-        <!-- 내 위치(GPS) 버튼 -->
         <button id="gps-btn" class="bg-white/95 backdrop-blur-md text-gray-700 w-12 h-12 rounded-full shadow-lg border border-black/[0.06] flex items-center justify-center text-xl active:bg-gray-100 transition" aria-label="My Location">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="7" stroke-width="2"></circle>
@@ -184,7 +182,6 @@
             </svg>
         </button>
 
-        <!-- 제작자 등록 FAB -->
         <div id="creator-fab" class="hidden">
             <button id="addPlaceBtn" class="bg-red-600 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-3xl font-light marker-pulse active:bg-red-700">
                 +
@@ -192,7 +189,7 @@
         </div>
     </div>
 
-    <!-- 위치 확정 버튼 -->
+    <!-- 위치 지정 확정 버튼 -->
     <div id="confirm-location-fab" class="hidden absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[50] pointer-events-auto pb-[env(safe-area-inset-bottom)] w-[90%] max-w-sm">
         <button id="confirmLocationBtn" class="w-full bg-blue-600 text-white py-4 rounded-full shadow-xl text-lg font-bold active:bg-blue-700">
             📍 이 위치로 지정하기
@@ -216,7 +213,7 @@
     </div>
 </div>
 
-<!-- 상세 바텀시트 -->
+<!-- 장소 상세 바텀시트 -->
 <div id="bottom-sheet" class="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-[0_-5px_25px_rgba(0,0,0,0.15)] transform translate-y-full transition-transform duration-300 pb-[env(safe-area-inset-bottom)] max-h-[85vh] flex flex-col hidden">
     <div class="flex justify-center p-3.5 cursor-pointer" id="sheet-handle">
         <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
@@ -248,13 +245,13 @@
     <button id="close-sheet-btn" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
 </div>
 
-<!-- 원본 확대 라이트박스 -->
+<!-- 라이트박스 -->
 <div id="lightbox" class="hidden fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-center items-center">
     <button id="lightbox-close" class="absolute top-[env(safe-area-inset-top)] right-4 mt-4 w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center text-xl font-bold pointer-events-none">✕</button>
     <img id="lightbox-img" class="w-full h-auto max-h-screen object-contain pointer-events-none" src="">
 </div>
 
-<!-- 장소 등록/수정 모달 -->
+<!-- 장소 추가/수정 모달 -->
 <div id="place-form-modal" class="hidden fixed inset-0 z-[200] bg-black/50 flex items-end justify-center sm:items-center">
     <div class="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl">
         <div class="p-5 border-b border-gray-100 flex justify-between items-center">
@@ -312,7 +309,7 @@
     </div>
 </div>
 
-<!-- 공통 안내 팝업 모달 -->
+<!-- 알림 팝업 모달 -->
 <div id="alert-modal" class="hidden fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-xs p-6 text-center shadow-2xl">
         <h3 class="text-base font-bold text-gray-900 mb-2" id="alert-title">알림</h3>
@@ -337,8 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    /* --- 2. 다국어 번역 사전 --- */
+    /* --- 2. 다국어 사전 --- */
     let currentLang = localStorage.getItem('app_lang') || 'ko';
     
     const i18n = {
@@ -436,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('alert-modal').classList.add('hidden');
     });
 
-    /* --- 3. 데이터 상태 관리 (Firestore 연동) --- */
+    /* --- 3. 데이터 상태 관리 --- */
     let places = [];
     let categories = ['전체', 'GS25', '카페', '식당', '쇼핑', '문화', '핫플'];
     let currentFilter = '전체';
@@ -448,17 +446,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTempLocation = null;
     let tempCompressedImage = null;
 
-    // 카테고리 실시간 구독
     db.collection("meta").doc("categories").onSnapshot((doc) => {
         if (doc.exists && doc.data().list) {
             categories = doc.data().list;
         } else {
-            db.collection("meta").doc("categories").set({ list: categories });
+            if (auth.currentUser) {
+                db.collection("meta").doc("categories").set({ list: categories }).catch(() => {});
+            }
         }
         renderCategories();
     });
 
-    // 장소 목록 실시간 구독 (전 기기 자동 동기화)
     db.collection("places").onSnapshot((snapshot) => {
         places = [];
         snapshot.forEach((doc) => {
@@ -467,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCategories();
         renderMarkers();
     }, (error) => {
-        console.error("Firestore 동기화 에러:", error);
+        console.error("Firestore 동기화:", error);
     });
 
     /* --- 4. 지도 초기화 --- */
@@ -522,16 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 });
     });
 
-    /* --- 6. SHA-256 해시 비밀번호 로직 --- */
-    async function sha256(message) {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    const TARGET_PASSWORD_HASH = 'e93e38bec834d416f993be047fc77eae91b774b9ae62d0f78594b1a7e3a4dd7f';
-
+    /* --- 6. Firebase Auth 실제 관리자 로그인 --- */
     let clickCount = 0;
     let clickTimer = null;
     
@@ -553,16 +542,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('submit-password-btn').addEventListener('click', async () => {
         const inputVal = document.getElementById('admin-password').value;
-        const inputHash = await sha256(inputVal);
+        const submitBtn = document.getElementById('submit-password-btn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "인증 중...";
 
-        if (inputHash === TARGET_PASSWORD_HASH) {
+        try {
+            // 파이어베이스 실제 관리자 토큰 발급 (데이터베이스 쓰기 권한 획득)
+            await auth.signInWithEmailAndPassword("admin@open-eat.com", inputVal);
             creatorUnlocked = true;
             document.getElementById('creator-toggle-container').classList.remove('hidden');
             document.getElementById('password-modal').classList.add('hidden');
             document.getElementById('creatorModeToggle').checked = true;
             document.getElementById('creatorModeToggle').dispatchEvent(new Event('change'));
-        } else {
+        } catch (error) {
             showAlert(i18n[currentLang].pwdIncorrect);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "확인";
         }
     });
 
@@ -800,7 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('photo-placeholder').classList.remove('hidden');
     }
 
-    /* --- 11. 장소 추가 / 수정 / 삭제 (Firestore 저장) --- */
+    /* --- 11. 장소 등록/수정/삭제 (인증 기반 Firestore 저장) --- */
     document.getElementById('addPlaceBtn').addEventListener('click', () => {
         pickingLocation = true;
         closeBottomSheet();
@@ -860,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(err => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
-                showAlert("수정 중 오류가 발생했습니다: " + err.message);
+                showAlert("수정 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
             });
         } else {
             placeData.lat = currentTempLocation.lat;
@@ -874,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(err => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
-                showAlert("등록 중 오류가 발생했습니다: " + err.message);
+                showAlert("등록 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
             });
         }
     });
@@ -903,12 +899,12 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection("places").doc(currentOpenPlace.id).delete().then(() => {
                 closeBottomSheet();
             }).catch(err => {
-                showAlert("삭제 실패: " + err.message);
+                showAlert("삭제 실패: 관리자 권한이 없습니다.");
             });
         }
     });
 
-    /* --- 12. 카테고리 관리 (Firestore 동기화) --- */
+    /* --- 12. 카테고리 관리 --- */
     document.getElementById('open-category-admin').addEventListener('click', () => {
         document.getElementById('category-admin-modal').classList.remove('hidden');
         renderCategoryAdmin();
@@ -939,7 +935,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = document.getElementById('new-category-input').value.trim();
         if(val && !categories.includes(val)) {
             categories.push(val);
-            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+            db.collection("meta").doc("categories").set({ list: categories }).then(() => {
                 document.getElementById('new-category-input').value = '';
                 renderCategoryAdmin();
             });
@@ -951,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(val && val !== oldCat && !categories.includes(val)) {
             const idx = categories.indexOf(oldCat);
             categories[idx] = val;
-            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+            db.collection("meta").doc("categories").set({ list: categories }).then(() => {
                 renderCategoryAdmin();
             });
         }
@@ -960,13 +956,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteCategory = (cat) => {
         if(confirm(`'${cat}' 카테고리를 삭제할까요?`)) {
             categories = categories.filter(c => c !== cat);
-            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+            db.collection("meta").doc("categories").set({ list: categories }).then(() => {
                 renderCategoryAdmin();
             });
         }
     };
 
-    // 초기 언어 실행
     applyLanguageUI();
 });
 </script>
