@@ -3,23 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>우리동네 스팟 공유</title>
     
-    <!-- PWA 매니페스트 및 서비스 워커 등록 -->
+    <!-- 브라우저 타이틀 -->
+    <title>우리동네</title>
+    
+    <!-- PWA 매니페스트 및 서비스 워커 등록 ('우리동네'로 설정) -->
     <link rel="manifest" id="manifest-link">
     <script>
         const manifest = {
-            "name": "우리동네 스팟 공유",
-            "short_name": "스팟공유",
+            "name": "우리동네",
+            "short_name": "우리동네",
             "start_url": "./",
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#ffffff",
             "icons": [
                 {
-                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ef4444'/><polygon points='40,30 70,50 40,70' fill='white'/></svg>",
+                    "src": "./icon.png",
                     "sizes": "192x192 512x512",
-                    "type": "image/svg+xml"
+                    "type": "image/png"
                 }
             ]
         };
@@ -37,12 +39,16 @@
         }
     </script>
 
-    <!-- 스타일 및 맵 라이브러리 -->
+    <!-- 모바일 및 아이폰 바로가기 추가 시 앱 아이콘 설정 (icon.png 연결) -->
+    <link rel="icon" href="./icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="./icon.png">
+
+    <!-- UI 스타일 및 지도 라이브러리 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- 파이어베이스 SDK (App, Firestore, Auth) -->
+    <!-- 구글 파이어베이스 SDK (v10 호환 모드) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -114,6 +120,7 @@
             <!-- 검색창, 언어 설정, 관리자 모달 진입 -->
             <div class="flex items-center gap-2 pointer-events-auto">
                 <div class="flex-1 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-black/[0.06] flex items-center px-3.5 py-2.5 relative">
+                    <!-- 돋보기 아이콘 (연속 3회 터치 시 관리자 모달 호출) -->
                     <button id="secret-login-btn" class="mr-2 text-gray-400 active:text-gray-600 focus:outline-none flex-shrink-0" aria-label="Search">
                         <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -547,7 +554,6 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = "인증 중...";
 
         try {
-            // 파이어베이스 실제 관리자 토큰 발급 (데이터베이스 쓰기 권한 획득)
             await auth.signInWithEmailAndPassword("admin@open-eat.com", inputVal);
             creatorUnlocked = true;
             document.getElementById('creator-toggle-container').classList.remove('hidden');
