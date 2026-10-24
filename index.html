@@ -11,11 +11,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#ffffff">
 
-    <!-- 모바일 아이콘 설정 -->
     <link rel="icon" href="./icon.png" type="image/png">
     <link rel="apple-touch-icon" href="./icon.png">
 
-    <!-- 웹 매니페스트 -->
     <link rel="manifest" id="manifest-link">
     <script>
         const manifestData = {
@@ -38,7 +36,7 @@
         document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
     </script>
 
-    <!-- UI 스타일 및 지도 라이브러리 -->
+    <!-- UI 및 지도 라이브러리 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -55,7 +53,15 @@
             font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", Roboto, sans-serif;
             background-color: #f3f4f6;
             -webkit-tap-highlight-color: transparent;
+            /* 구글 번역 시 상단 강제 여백 제거 */
+            top: 0 !important; 
         }
+        
+        /* 구글 번역 위젯 툴바 완전 숨김 처리 */
+        .skiptranslate, #google_translate_element { display: none !important; }
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        .goog-text-highlight { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+
         .app-container {
             height: 100vh; height: 100dvh; 
             position: relative;
@@ -106,44 +112,45 @@
 </head>
 <body>
 
+<!-- 구글 번역 엔진 보이지 않는 컨테이너 -->
+<div id="google_translate_element"></div>
+
 <div class="app-container">
 
     <!-- 상단 UI -->
     <div class="absolute top-0 left-0 right-0 z-[50] pt-[env(safe-area-inset-top)] pointer-events-none">
         <div class="px-4 pt-4 pb-2 flex flex-col gap-2.5">
             
-            <!-- 검색창, 언어 설정, 관리자 모달 진입 -->
             <div class="flex items-center gap-2 pointer-events-auto">
                 <div class="flex-1 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-black/[0.06] flex items-center px-3.5 py-2.5 relative">
-                    <!-- 돋보기 아이콘 (연속 3회 터치 시 관리자 모달 호출) -->
                     <button id="secret-login-btn" class="mr-2 text-gray-400 active:text-gray-600 focus:outline-none flex-shrink-0" aria-label="Search">
                         <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </button>
-                    <input type="text" id="searchInput" placeholder="장소명 또는 태그 검색" class="w-full outline-none text-[15px] bg-transparent text-gray-800 placeholder-gray-400">
+                    <!-- notranslate 클래스로 검색창 내 한글 입력이 꼬이지 않게 보호 -->
+                    <input type="text" id="searchInput" placeholder="장소명 또는 태그 검색" class="w-full outline-none text-[15px] bg-transparent text-gray-800 placeholder-gray-400 notranslate">
                     <button id="search-clear-btn" class="hidden text-gray-400 hover:text-gray-600 ml-1 p-1">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
                     </button>
                 </div>
 
-                <!-- 다국어 메뉴 버튼 -->
-                <div class="relative">
+                <!-- 다국어 메뉴 버튼 (구글 번역 엔진 제어) -->
+                <div class="relative notranslate">
                     <button id="lang-btn" class="bg-white/95 backdrop-blur-md border border-black/[0.06] shadow-sm px-3 py-2.5 rounded-2xl flex items-center gap-1 text-xs font-bold text-gray-700 active:bg-gray-50">
                         <span>🌐</span>
                         <span id="current-lang-text">KO</span>
                     </button>
                     <div id="lang-menu" class="hidden absolute right-0 mt-1 w-28 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-1 z-[60]">
-                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('ko')">한국어 <span>🇰🇷</span></button>
-                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('en')">English <span>🇺🇸</span></button>
-                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('ja')">日本語 <span>🇯🇵</span></button>
-                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('zh')">中文 <span>🇨🇳</span></button>
+                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeGoogleLang('ko')">한국어 <span>🇰🇷</span></button>
+                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeGoogleLang('en')">English <span>🇺🇸</span></button>
+                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeGoogleLang('ja')">日本語 <span>🇯🇵</span></button>
+                        <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeGoogleLang('zh-CN')">中文 <span>🇨🇳</span></button>
                     </div>
                 </div>
                 
-                <!-- 제작자 모드 스위치 -->
                 <div id="creator-toggle-container" class="hidden bg-white/95 backdrop-blur-md rounded-2xl shadow-sm px-3 py-2.5 flex items-center gap-2 border border-black/[0.06]">
-                    <span class="text-xs font-bold text-red-600 whitespace-nowrap" id="txt-creator-badge">제작자</span>
+                    <span class="text-xs font-bold text-red-600 whitespace-nowrap">제작자</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="creatorModeToggle" class="sr-only peer">
                         <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-red-500"></div>
@@ -161,17 +168,14 @@
         </div>
     </div>
 
-    <!-- 위치 지정 십자선 -->
     <div id="crosshair" class="hidden absolute inset-0 z-[40] flex items-center justify-center pointer-events-none">
         <div class="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center bg-red-500/20">
             <div class="w-2 h-2 bg-red-600 rounded-full"></div>
         </div>
     </div>
 
-    <!-- 지도 본체 -->
     <div id="map"></div>
 
-    <!-- 우측 하단 조작 버튼 (GPS + 추가 FAB) -->
     <div class="absolute bottom-6 right-4 z-[50] flex flex-col items-end gap-3 pointer-events-auto pb-[env(safe-area-inset-bottom)]">
         <button id="gps-btn" class="bg-white/95 backdrop-blur-md text-gray-700 w-12 h-12 rounded-full shadow-lg border border-black/[0.06] flex items-center justify-center text-xl active:bg-gray-100 transition" aria-label="My Location">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +195,6 @@
         </div>
     </div>
 
-    <!-- 위치 지정 확정 버튼 -->
     <div id="confirm-location-fab" class="hidden absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[50] pointer-events-auto pb-[env(safe-area-inset-bottom)] w-[90%] max-w-sm">
         <button id="confirmLocationBtn" class="w-full bg-blue-600 text-white py-4 rounded-full shadow-xl text-lg font-bold active:bg-blue-700">
             📍 이 위치로 지정하기
@@ -200,14 +203,12 @@
 
 </div>
 
-<!-- 모달 & 바텀시트 UI -->
-
 <!-- 관리자 인증 모달 -->
 <div id="password-modal" class="hidden fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-xs p-6 text-center shadow-2xl border border-gray-100">
-        <h2 class="text-lg font-bold mb-1.5 text-gray-900" id="pwd-modal-title">제작자 모드 인증</h2>
-        <p class="text-xs text-gray-500 mb-4" id="pwd-modal-desc">관리자 비밀번호를 입력해주세요.</p>
-        <input type="password" id="admin-password" class="w-full bg-gray-100 p-3.5 rounded-2xl text-center text-xl tracking-widest mb-4 outline-none focus:ring-2 focus:ring-red-400" placeholder="비밀번호">
+        <h2 class="text-lg font-bold mb-1.5 text-gray-900">제작자 모드 인증</h2>
+        <p class="text-xs text-gray-500 mb-4">관리자 비밀번호를 입력해주세요.</p>
+        <input type="password" id="admin-password" class="w-full bg-gray-100 p-3.5 rounded-2xl text-center text-xl tracking-widest mb-4 outline-none focus:ring-2 focus:ring-red-400 notranslate" placeholder="비밀번호">
         <div class="flex gap-2">
             <button id="close-password-btn" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm">취소</button>
             <button id="submit-password-btn" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm">확인</button>
@@ -236,35 +237,35 @@
             <img id="sheet-photo" class="w-full h-full object-cover" src="" alt="Spot photo">
             <div class="absolute bottom-3 right-3 bg-black/70 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 backdrop-blur-md">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <span id="txt-view-photo">자세히 보기</span>
+                <span>자세히 보기</span>
             </div>
         </div>
 
-        <!-- 상세 정보 바로가기 버튼 (수정된 부분) -->
+        <!-- 상세 정보 버튼으로 수정 -->
         <a id="sheet-link-btn" href="#" target="_blank" class="w-full block bg-red-50 text-red-600 text-center py-4 rounded-2xl font-bold border border-red-100 shadow-sm active:bg-red-100 transition text-[15px]">
-            ℹ️ <span id="txt-link-btn">상세 정보</span>
+            ℹ️ <span>상세 정보</span>
         </a>
     </div>
-    <button id="close-sheet-btn" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
+    <button id="close-sheet-btn" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold notranslate">✕</button>
 </div>
 
 <!-- 라이트박스 -->
 <div id="lightbox" class="hidden fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-center items-center">
-    <button id="lightbox-close" class="absolute top-[env(safe-area-inset-top)] right-4 mt-4 w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center text-xl font-bold pointer-events-none">✕</button>
+    <button id="lightbox-close" class="absolute top-[env(safe-area-inset-top)] right-4 mt-4 w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center text-xl font-bold pointer-events-none notranslate">✕</button>
     <img id="lightbox-img" class="w-full h-auto max-h-screen object-contain pointer-events-none" src="">
 </div>
 
-<!-- 장소 추가/수정 모달 -->
+<!-- 장소 등록/수정 폼 모달 -->
 <div id="place-form-modal" class="hidden fixed inset-0 z-[200] bg-black/50 flex items-end justify-center sm:items-center">
     <div class="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl">
         <div class="p-5 border-b border-gray-100 flex justify-between items-center">
             <h3 class="text-lg font-bold" id="form-modal-title">장소 등록</h3>
-            <button id="close-form-btn" class="text-gray-400 text-2xl">✕</button>
+            <button id="close-form-btn" class="text-gray-400 text-2xl notranslate">✕</button>
         </div>
         <div class="p-5 overflow-y-auto flex-1 pb-[env(safe-area-inset-bottom)]">
             
             <label class="block text-sm font-bold text-gray-700 mb-1.5">장소명</label>
-            <input type="text" id="input-title" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition" placeholder="예) GS25 낙성대역점">
+            <input type="text" id="input-title" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition notranslate" placeholder="예) GS25 낙성대역점">
 
             <div class="flex justify-between items-end mb-1.5">
                 <label class="block text-sm font-bold text-gray-700">카테고리</label>
@@ -274,7 +275,7 @@
             </select>
 
             <label class="block text-sm font-bold text-gray-700 mb-1.5">상세 정보 / 연결 링크</label>
-            <input type="text" id="input-link" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition" placeholder="지도 상세 링크, 인스타, 웹사이트 등">
+            <input type="text" id="input-link" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 mb-5 outline-none focus:border-blue-500 focus:bg-white transition notranslate" placeholder="지도 상세 링크, 인스타 등">
 
             <label class="block text-sm font-bold text-gray-700 mb-1.5">사진 첨부 (선택)</label>
             <div class="w-full bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center mb-8 relative">
@@ -301,10 +302,10 @@
     <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
         <div class="flex justify-between items-center mb-5">
             <h3 class="text-lg font-bold">카테고리 관리</h3>
-            <button id="close-category-admin-btn" class="text-gray-400 text-xl">✕</button>
+            <button id="close-category-admin-btn" class="text-gray-400 text-xl notranslate">✕</button>
         </div>
         <div class="flex gap-2 mb-5">
-            <input type="text" id="new-category-input" class="min-w-0 flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-sm" placeholder="새 카테고리명">
+            <input type="text" id="new-category-input" class="min-w-0 flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-sm notranslate" placeholder="새 카테고리명">
             <button id="add-category-btn" class="flex-shrink-0 bg-gray-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap active:bg-gray-700">추가</button>
         </div>
         <ul id="category-admin-list" class="max-h-60 overflow-y-auto space-y-2 border-t border-gray-100 pt-4">
@@ -312,14 +313,36 @@
     </div>
 </div>
 
-<!-- 알림 팝업 모달 -->
-<div id="alert-modal" class="hidden fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-white rounded-3xl w-full max-w-xs p-6 text-center shadow-2xl">
-        <h3 class="text-base font-bold text-gray-900 mb-2" id="alert-title">알림</h3>
-        <p class="text-sm text-gray-600 mb-5 whitespace-pre-line" id="alert-message"></p>
-        <button id="alert-ok-btn" class="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-bold text-sm active:bg-blue-700">확인</button>
-    </div>
-</div>
+<script>
+    // --- 구글 번역 엔진 초기화 세팅 --- //
+    function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+            pageLanguage: 'ko',
+            includedLanguages: 'en,ja,zh-CN', // 영어, 일본어, 중국어(간체) 지원
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+        }, 'google_translate_element');
+    }
+
+    // 커스텀 버튼으로 구글 번역 제어
+    window.changeGoogleLang = function(lang) {
+        document.getElementById('lang-menu').classList.add('hidden');
+        
+        let displayLang = lang.toUpperCase();
+        if(lang === 'zh-CN') displayLang = 'ZH';
+        document.getElementById('current-lang-text').innerText = displayLang;
+
+        // 구글 번역기 내부의 숨겨진 언어 선택 select 박스를 조작
+        const selectElement = document.querySelector('.goog-te-combo');
+        if (selectElement) {
+            selectElement.value = lang;
+            selectElement.dispatchEvent(new Event('change'));
+        }
+    };
+</script>
+<!-- 구글 번역 스크립트 로드 -->
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -339,127 +362,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    /* --- 2. 다국어 사전 (linkBtn 문구를 '상세 정보' 계열로 반영) --- */
-    let currentLang = localStorage.getItem('app_lang') || 'ko';
-    
-    const i18n = {
-        ko: {
-            all: '전체', searchPlaceholder: '장소명 또는 태그 검색', creatorBadge: '제작자',
-            linkBtn: '상세 정보', viewPhoto: '자세히 보기',
-            alertTitle: '알림',
-            gpsDenied: '위치 권한이 거부되었습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.',
-            gpsUnavailable: '현재 위치 정보를 수신할 수 없습니다.\n잠시 후 다시 시도해주세요.',
-            gpsTimeout: '위치 확인 시간이 초과되었습니다.\n신호 상태를 확인해주세요.',
-            gpsGeneral: '위치 정보를 가져올 수 없습니다.',
-            pwdIncorrect: '비밀번호가 올바르지 않습니다.'
-        },
-        en: {
-            all: 'All', searchPlaceholder: 'Search place or tag', creatorBadge: 'Creator',
-            linkBtn: 'View Details', viewPhoto: 'View Photo',
-            alertTitle: 'Notice',
-            gpsDenied: 'Location permission denied.\nPlease allow location access in your browser settings.',
-            gpsUnavailable: 'Location information unavailable.\nPlease try again in a moment.',
-            gpsTimeout: 'Location request timed out.\nPlease check your GPS signal.',
-            gpsGeneral: 'Unable to retrieve location.',
-            pwdIncorrect: 'Incorrect password.'
-        },
-        ja: {
-            all: 'すべて', searchPlaceholder: 'スポット名またはタグで検索', creatorBadge: '制作者',
-            linkBtn: '詳細情報', viewPhoto: '写真を見る',
-            alertTitle: 'お知らせ',
-            gpsDenied: '位置情報の利用が拒否されました。\nブラウザの設定で許可してください。',
-            gpsUnavailable: '現在地を取得できません。\nしばらくしてからもう一度お試しください。',
-            gpsTimeout: 'タイムアウトしました。\nGPS電波状況をご確認ください。',
-            gpsGeneral: '位置情報を取得できませんでした。',
-            pwdIncorrect: 'パスワードが正しくありません。'
-        },
-        zh: {
-            all: '全部', searchPlaceholder: '搜索地点或标签', creatorBadge: '创作者',
-            linkBtn: '详细信息', viewPhoto: '查看大图',
-            alertTitle: '提示',
-            gpsDenied: '位置权限已被拒绝。\n请在浏览器设置中开启定位权限。',
-            gpsUnavailable: '无法获取当前位置信息。\n请稍后再试。',
-            gpsTimeout: '获取位置超时。\n请检查GPS信号。',
-            gpsGeneral: '无法获取您的位置。',
-            pwdIncorrect: '密码错误。'
-        }
-    };
-
-    let termDict = {
-        '식당': { en: 'Restaurant', ja: '食堂/グルメ', zh: '餐厅' },
-        '카페': { en: 'Cafe', ja: 'カフェ', zh: '咖啡馆' },
-        '쇼핑': { en: 'Shopping', ja: 'ショッピング', zh: '购物' },
-        '문화': { en: 'Culture', ja: '文化', zh: '文化' },
-        '핫플': { en: 'Hotspot', ja: '人気スポット', zh: '热门地点' },
-        '국밥': { en: 'Gukbap (Rice Soup)', ja: 'クッパ', zh: '汤饭' },
-        '순대국': { en: 'Sundae Soup', ja: 'スンデスープ', zh: '米肠汤' },
-        '돼지국밥': { en: 'Pork Rice Soup', ja: 'テジクッパ', zh: '猪肉汤饭' },
-        '고기집': { en: 'Korean BBQ', ja: '焼肉店', zh: '烤肉店' },
-        '삼겹살': { en: 'Pork Belly', ja: 'サムギョプサル', zh: '五花肉' },
-        '치킨': { en: 'Korean Fried Chicken', ja: 'チキン', zh: '炸鸡' },
-        '술집': { en: 'Pub / Bar', ja: '居酒屋', zh: '酒吧' },
-        '포차': { en: 'Pocha (Pub)', ja: 'ポチャ', zh: '大排档' },
-        '베이커리': { en: 'Bakery', ja: 'ベーカリー', zh: '面包店' },
-        '디저트': { en: 'Dessert', ja: 'デザート', zh: '甜点' },
-        '편의점': { en: 'Convenience Store', ja: 'コンビニ', zh: '便利店' },
-        '약국': { en: 'Pharmacy', ja: '薬局', zh: '药店' },
-        '공원': { en: 'Park', ja: '公園', zh: '公园' },
-        '산책로': { en: 'Walking Trail', ja: '散歩道', zh: '散步道' },
-    };
-
-    fetch('./dict.json?v=' + Date.now())
-        .then(res => res.json())
-        .then(data => {
-            termDict = { ...termDict, ...data };
-            applyLanguageUI();
-        })
-        .catch(() => {});
-
-    function translateText(text) {
-        if (!text || currentLang === 'ko') return text;
-        if (termDict[text] && termDict[text][currentLang]) return termDict[text][currentLang];
-        for (const [key, val] of Object.entries(termDict)) {
-            if (text.includes(key) && val[currentLang]) return text.replace(key, val[currentLang]);
-        }
-        return text;
-    }
-
-    function applyLanguageUI() {
-        const t = i18n[currentLang];
-        document.getElementById('current-lang-text').textContent = currentLang.toUpperCase();
-        document.getElementById('searchInput').placeholder = t.searchPlaceholder;
-        document.getElementById('txt-creator-badge').textContent = t.creatorBadge;
-        document.getElementById('txt-link-btn').textContent = t.linkBtn;
-        document.getElementById('txt-view-photo').textContent = t.viewPhoto;
-        renderCategories();
-        renderMarkers();
-    }
-
-    window.changeLang = (lang) => {
-        currentLang = lang;
-        localStorage.setItem('app_lang', lang);
-        document.getElementById('lang-menu').classList.add('hidden');
-        applyLanguageUI();
-    };
-
+    // 언어 메뉴 토글 로직
     document.getElementById('lang-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         document.getElementById('lang-menu').classList.toggle('hidden');
     });
     document.addEventListener('click', () => document.getElementById('lang-menu').classList.add('hidden'));
 
-    function showAlert(msg) {
-        document.getElementById('alert-title').textContent = i18n[currentLang].alertTitle;
-        document.getElementById('alert-message').textContent = msg;
-        document.getElementById('alert-modal').classList.remove('hidden');
-    }
-    document.getElementById('alert-ok-btn').addEventListener('click', () => {
-        document.getElementById('alert-modal').classList.add('hidden');
-    });
-
-    /* --- 3. 데이터 상태 관리 --- */
+    /* --- 2. 데이터 상태 관리 --- */
     let places = [];
-    let categories = ['전체', 'GS25', '카페', '식당', '쇼핑', '문화', '핫플'];
+    let categories = ['전체'];
     let currentFilter = '전체';
     
     let isCreatorMode = false;
@@ -491,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Firestore 동기화:", error);
     });
 
-    /* --- 4. 지도 초기화 --- */
+    /* --- 3. 지도 초기화 --- */
     const map = L.map('map', { 
         zoomControl: false, 
         attributionControl: false 
@@ -500,13 +412,13 @@ document.addEventListener('DOMContentLoaded', () => {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     const markersLayer = L.layerGroup().addTo(map);
 
-    /* --- 5. GPS 추적 --- */
+    /* --- 4. GPS 추적 --- */
     let userLocationMarker = null;
     let userAccuracyCircle = null;
 
     document.getElementById('gps-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showAlert(i18n[currentLang].gpsGeneral);
+            alert('위치 정보를 가져올 수 없습니다.');
             return;
         }
 
@@ -530,20 +442,14 @@ document.addEventListener('DOMContentLoaded', () => {
             map.flyTo(latlng, 17, { animate: true, duration: 1.2 });
         };
 
-        const gpsError = (err) => {
-            let msg = i18n[currentLang].gpsGeneral;
-            if (err.code === 1) msg = i18n[currentLang].gpsDenied;
-            else if (err.code === 2) msg = i18n[currentLang].gpsUnavailable;
-            else if (err.code === 3) msg = i18n[currentLang].gpsTimeout;
-            showAlert(msg);
-        };
+        const gpsError = () => { alert('현재 위치 정보를 수신할 수 없습니다. 권한을 확인해주세요.'); };
 
         navigator.geolocation.getCurrentPosition(gpsSuccess, () => {
-            navigator.geolocation.getCurrentPosition(gpsSuccess, gpsError, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-        }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 });
+            navigator.geolocation.getCurrentPosition(gpsSuccess, gpsError, { enableHighAccuracy: false, timeout: 10000 });
+        }, { enableHighAccuracy: true, timeout: 6000 });
     });
 
-    /* --- 6. 파이어베이스 관리자 인증 --- */
+    /* --- 5. 파이어베이스 관리자 인증 --- */
     let clickCount = 0;
     let clickTimer = null;
     
@@ -577,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('creatorModeToggle').checked = true;
             document.getElementById('creatorModeToggle').dispatchEvent(new Event('change'));
         } catch (error) {
-            showAlert(i18n[currentLang].pwdIncorrect);
+            alert('비밀번호가 올바르지 않습니다.');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = "확인";
@@ -598,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBottomSheet();
     });
 
-    /* --- 7. 카테고리 & 마커 렌더링 (초근접 마커 자동 분산) --- */
+    /* --- 6. 카테고리 & 마커 렌더링 (초근접 마커 자동 분산 탑재) --- */
     function renderCategories() {
         const chipsContainer = document.getElementById('categoryChips');
         chipsContainer.innerHTML = '';
@@ -611,9 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 isActive ? 'bg-gray-800 text-white border-gray-800' : 'bg-white/90 backdrop-blur-md text-gray-700 border-black/[0.06]'
             }`;
             
-            const displayCat = cat === '전체' ? i18n[currentLang].all : translateText(cat);
             let count = (cat === '전체') ? places.length : places.filter(p => p.category === cat).length;
-            btn.innerHTML = `${cat === '전체' ? '🌐 ' + displayCat : '#' + displayCat} <span class="${isActive ? 'text-gray-300' : 'text-gray-400'} ml-1">${count}</span>`;
+            btn.innerHTML = `${cat === '전체' ? '🌐 전체' : '#' + cat} <span class="${isActive ? 'text-gray-300' : 'text-gray-400'} ml-1">${count}</span>`;
             
             btn.onclick = () => {
                 currentFilter = cat;
@@ -629,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getCustomIcon(place) {
-        const translatedTitle = translateText(place.title);
         let pinInner = place.image ? 
             `<div class="w-13 h-13 w-[52px] h-[52px] rounded-full border-[3px] border-white shadow-md overflow-hidden relative bg-gray-200">
                 <img src="${place.image}" class="w-full h-full object-cover"/>
@@ -643,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex flex-col items-center cursor-pointer pointer-events-auto">
                 ${pinInner}
                 <div class="mt-1 px-2.5 py-0.5 bg-gray-900/80 backdrop-blur-sm text-white text-[11px] font-bold rounded-full shadow-sm max-w-[110px] truncate text-center border border-white/20">
-                    ${translatedTitle}
+                    ${place.title}
                 </div>
             </div>
         `;
@@ -660,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
         markersLayer.clearLayers();
         let filtered = currentFilter === '전체' ? places : places.filter(p => p.category === currentFilter);
 
+        // 초근접 마커 그룹핑
         const groups = [];
         const threshold = 0.00018;
 
@@ -678,6 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!added) groups.push([place]);
         });
 
+        // 겹친 마커는 부채꼴 분산 렌더링
         groups.forEach(group => {
             const count = group.length;
 
@@ -707,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* --- 8. 검색 목록 & 하이라이트 --- */
+    /* --- 7. 검색 목록 & 하이라이트 --- */
     const searchInput = document.getElementById('searchInput');
     const searchSuggestions = document.getElementById('search-suggestions');
     const searchClearBtn = document.getElementById('search-clear-btn');
@@ -723,12 +629,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const filtered = places.filter(p => {
-            const tTitle = translateText(p.title || '').toLowerCase();
-            const tCat = translateText(p.category || '').toLowerCase();
             return (p.title && p.title.toLowerCase().includes(val)) || 
-                   (p.category && p.category.toLowerCase().includes(val)) || 
-                   tTitle.includes(val) || 
-                   tCat.includes(val);
+                   (p.category && p.category.toLowerCase().includes(val));
         });
 
         if (filtered.length === 0) {
@@ -738,11 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         searchSuggestions.innerHTML = filtered.map(p => {
-            const dispTitle = translateText(p.title || '');
-            const dispCat = translateText(p.category || '');
-            
             const regex = new RegExp(`(${val})`, 'gi');
-            const highlightedTitle = dispTitle.replace(regex, '<span class="text-blue-600 font-extrabold">$1</span>');
+            const highlightedTitle = p.title.replace(regex, '<span class="text-blue-600 font-extrabold">$1</span>');
 
             const thumb = p.image ? 
                 `<img src="${p.image}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-gray-100">` : 
@@ -753,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${thumb}
                     <div class="flex-1 min-w-0 text-left">
                         <div class="text-sm font-bold text-gray-800 truncate">${highlightedTitle}</div>
-                        <div class="text-[11px] text-gray-400 font-medium">#${dispCat}</div>
+                        <div class="text-[11px] text-gray-400 font-medium">#${p.category}</div>
                     </div>
                 </div>
             `;
@@ -781,14 +680,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /* --- 9. 바텀시트 & 라이트박스 --- */
+    /* --- 8. 바텀시트 & 라이트박스 --- */
     const bottomSheet = document.getElementById('bottom-sheet');
     let currentOpenPlace = null;
 
     function openBottomSheet(place) {
         currentOpenPlace = place;
-        document.getElementById('sheet-title').textContent = translateText(place.title);
-        document.getElementById('sheet-category').textContent = '#' + translateText(place.category);
+        document.getElementById('sheet-title').textContent = place.title;
+        document.getElementById('sheet-category').textContent = '#' + place.category;
         
         const linkBtn = document.getElementById('sheet-link-btn');
         if(place.link) { linkBtn.href = place.link; linkBtn.style.display = 'block'; } 
@@ -825,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     lightbox.addEventListener('click', () => lightbox.classList.add('hidden'));
 
-    /* --- 10. 사진 압축 처리 --- */
+    /* --- 9. 사진 압축 처리 --- */
     document.getElementById('input-photo').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -857,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('photo-placeholder').classList.remove('hidden');
     }
 
-    /* --- 11. 장소 등록/수정/삭제 --- */
+    /* --- 10. 장소 등록/수정/삭제 --- */
     document.getElementById('addPlaceBtn').addEventListener('click', () => {
         pickingLocation = true;
         closeBottomSheet();
@@ -890,8 +789,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const category = document.getElementById('input-category').value;
         const link = document.getElementById('input-link').value.trim();
 
-        if(!title) return showAlert('장소명을 입력해주세요.');
-        if(!link) return showAlert('링크를 입력해주세요.');
+        if(!title) return alert('장소명을 입력해주세요.');
+        if(!link) return alert('링크를 입력해주세요.');
 
         const saveBtn = document.getElementById('save-place-btn');
         saveBtn.disabled = true;
@@ -914,10 +813,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
                 document.getElementById('place-form-modal').classList.add('hidden');
-            }).catch(err => {
+            }).catch(() => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
-                showAlert("수정 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
+                alert("수정 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
             });
         } else {
             placeData.lat = currentTempLocation.lat;
@@ -928,10 +827,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
                 document.getElementById('place-form-modal').classList.add('hidden');
-            }).catch(err => {
+            }).catch(() => {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "저장하기";
-                showAlert("등록 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
+                alert("등록 실패: 관리자 권한이 없거나 오류가 발생했습니다.");
             });
         }
     });
@@ -959,13 +858,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if(confirm(`'${currentOpenPlace.title}' 장소를 삭제하시겠습니까?`)) {
             db.collection("places").doc(currentOpenPlace.id).delete().then(() => {
                 closeBottomSheet();
-            }).catch(err => {
-                showAlert("삭제 실패: 관리자 권한이 없습니다.");
+            }).catch(() => {
+                alert("삭제 실패: 관리자 권한이 없습니다.");
             });
         }
     });
 
-    /* --- 12. 카테고리 관리 --- */
+    /* --- 11. 카테고리 관리 --- */
     document.getElementById('open-category-admin').addEventListener('click', () => {
         document.getElementById('category-admin-modal').classList.remove('hidden');
         renderCategoryAdmin();
@@ -983,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-gray-50 border border-gray-100 p-2.5 rounded-xl';
             li.innerHTML = `
-                <input type="text" value="${cat}" class="flex-1 bg-transparent outline-none font-bold text-gray-700 text-sm" id="cat-edit-${cat}">
+                <input type="text" value="${cat}" class="flex-1 bg-transparent outline-none font-bold text-gray-700 text-sm notranslate" id="cat-edit-${cat}">
                 <div class="flex gap-1.5 flex-shrink-0">
                     <button class="text-xs bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg font-bold" onclick="updateCategory('${cat}')">수정</button>
                     <button class="text-xs bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg font-bold" onclick="deleteCategory('${cat}')">삭제</button>
@@ -1023,7 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    applyLanguageUI();
 });
 </script>
 </body>
