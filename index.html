@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <!-- 브라우저 타이틀 -->
     <title>우리동네</title>
     
-    <!-- PWA 매니페스트 및 서비스 워커 등록 ('우리동네'로 설정) -->
+    <!-- PWA 바로가기 및 풀스크린 웹앱 설정 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- 모바일 아이콘 설정 -->
+    <link rel="icon" href="./icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="./icon.png">
+
+    <!-- 웹 매니페스트 (오류 유발 서비스워커 제거 및 maskable 규격 적용) -->
     <link rel="manifest" id="manifest-link">
     <script>
-        const manifest = {
+        const manifestData = {
             "name": "우리동네",
             "short_name": "우리동네",
-            "start_url": "./",
+            "start_url": window.location.href.split('#')[0],
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#ffffff",
@@ -21,27 +29,14 @@
                 {
                     "src": "./icon.png",
                     "sizes": "192x192 512x512",
-                    "type": "image/png"
+                    "type": "image/png",
+                    "purpose": "any maskable"
                 }
             ]
         };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
         document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
-
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                self.addEventListener('install', (e) => self.skipWaiting());
-                self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
-                self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
-            `;
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
-        }
     </script>
-
-    <!-- 모바일 및 아이폰 바로가기 추가 시 앱 아이콘 설정 (icon.png 연결) -->
-    <link rel="icon" href="./icon.png" type="image/png">
-    <link rel="apple-touch-icon" href="./icon.png">
 
     <!-- UI 스타일 및 지도 라이브러리 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -246,7 +241,7 @@
         </div>
 
         <a id="sheet-link-btn" href="#" target="_blank" class="w-full block bg-red-50 text-red-600 text-center py-4 rounded-2xl font-bold border border-red-100 shadow-sm active:bg-red-100 transition text-[15px]">
-            🎬 <span id="txt-link-btn">영상 / 링크 바로가기</span>
+            💌 <span id="txt-link-btn">상세정보</span>
         </a>
     </div>
     <button id="close-sheet-btn" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold">✕</button>
@@ -343,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    /* --- 2. 다국어 사전 --- */
+    /* --- 2. 다국어 사전 (내장 기본 사전 + 외부 dict.json 자동 병합) --- */
     let currentLang = localStorage.getItem('app_lang') || 'ko';
     
     const i18n = {
@@ -389,15 +384,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const termDict = {
+    // 기본 내장 사전 (dict.json 로딩 전 즉시 작동)
+    let termDict = {
         '식당': { en: 'Restaurant', ja: '食堂/グルメ', zh: '餐厅' },
         '카페': { en: 'Cafe', ja: 'カフェ', zh: '咖啡馆' },
         '쇼핑': { en: 'Shopping', ja: 'ショッピング', zh: '购物' },
         '문화': { en: 'Culture', ja: '文化', zh: '文化' },
-        '핫플': { en: 'Hotspot', ja: '人気スポット', zh: '热点' },
+        '핫플': { en: 'Hotspot', ja: '人気スポット', zh: '热门地点' },
+        '국밥': { en: 'Gukbap (Rice Soup)', ja: 'クッパ', zh: '汤饭' },
+        '순대국': { en: 'Sundae Soup', ja: 'スンデスープ', zh: '米肠汤' },
+        '돼지국밥': { en: 'Pork Rice Soup', ja: 'テジクッパ', zh: '猪肉汤饭' },
+        '고기집': { en: 'Korean BBQ', ja: '焼肉店', zh: '烤肉店' },
+        '삼겹살': { en: 'Pork Belly', ja: 'サムギョプサル', zh: '五花肉' },
+        '치킨': { en: 'Korean Fried Chicken', ja: 'チキン', zh: '炸鸡' },
+        '술집': { en: 'Pub / Bar', ja: '居酒屋', zh: '酒吧' },
+        '포차': { en: 'Pocha (Pub)', ja: 'ポチャ', zh: '大排档' },
+        '베이커리': { en: 'Bakery', ja: 'ベーカリー', zh: '面包店' },
+        '디저트': { en: 'Dessert', ja: 'デザート', zh: '甜点' },
+        '편의점': { en: 'Convenience Store', ja: 'コンビニ', zh: '便利店' },
+        '약국': { en: 'Pharmacy', ja: '薬局', zh: '药店' },
+        '공원': { en: 'Park', ja: '公園', zh: '公园' },
+        '산책로': { en: 'Walking Trail', ja: '散歩道', zh: '散步道' },
         '테스트': { en: 'Test', ja: 'テスト', zh: '测试' },
         '테스트2': { en: 'Test 2', ja: 'テスト2', zh: '测试2' }
     };
+
+    // 저장소에 dict.json 파일이 있으면 비동기로 최신 단어장 추가 로드
+    fetch('./dict.json?v=' + Date.now())
+        .then(res => res.json())
+        .then(data => {
+            termDict = { ...termDict, ...data };
+            applyLanguageUI();
+        })
+        .catch(() => {});
 
     function translateText(text) {
         if (!text || currentLang === 'ko') return text;
@@ -484,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     const markersLayer = L.layerGroup().addTo(map);
 
-    /* --- 5. GPS 내 위치 추적 --- */
+    /* --- 5. GPS 추적 --- */
     let userLocationMarker = null;
     let userAccuracyCircle = null;
 
@@ -527,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 });
     });
 
-    /* --- 6. Firebase Auth 실제 관리자 로그인 --- */
+    /* --- 6. 파이어베이스 관리자 인증 --- */
     let clickCount = 0;
     let clickTimer = null;
     
@@ -582,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBottomSheet();
     });
 
-    /* --- 7. 카테고리 & 마커 렌더링 --- */
+    /* --- 7. 카테고리 & 마커 렌더링 (초근접 마커 자동 분산 탑재) --- */
     function renderCategories() {
         const chipsContainer = document.getElementById('categoryChips');
         chipsContainer.innerHTML = '';
@@ -643,12 +662,54 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMarkers() {
         markersLayer.clearLayers();
         let filtered = currentFilter === '전체' ? places : places.filter(p => p.category === currentFilter);
+
+        // 1단계: 초근접(약 18m 이내) 겹침 마커 그룹핑
+        const groups = [];
+        const threshold = 0.00018;
+
         filtered.forEach(place => {
-            if (place.lat && place.lng) {
-                const marker = L.marker([place.lat, place.lng], { icon: getCustomIcon(place) });
-                marker.on('click', () => openBottomSheet(place));
-                markersLayer.addLayer(marker);
+            if (!place.lat || !place.lng) return;
+            let added = false;
+            for (let g of groups) {
+                const center = g[0];
+                const dist = Math.hypot(center.lat - place.lat, center.lng - place.lng);
+                if (dist < threshold) {
+                    g.push(place);
+                    added = true;
+                    break;
+                }
             }
+            if (!added) groups.push([place]);
+        });
+
+        // 2단계: 겹친 마커는 부채꼴/원형으로 살짝 띄워 렌더링
+        groups.forEach(group => {
+            const count = group.length;
+
+            group.forEach((place, idx) => {
+                let drawLat = place.lat;
+                let drawLng = place.lng;
+
+                // 2개 이상 겹친 경우 원형 오프셋 분산 적용
+                if (count > 1) {
+                    const angle = (idx / count) * 2 * Math.PI;
+                    const offsetRadius = 0.00014; // 분산 반경 약 15m
+                    drawLat = place.lat + offsetRadius * Math.sin(angle);
+                    drawLng = place.lng + (offsetRadius * Math.cos(angle)) / Math.cos(place.lat * (Math.PI / 180));
+                }
+
+                const marker = L.marker([drawLat, drawLng], { 
+                    icon: getCustomIcon(place),
+                    riseOnHover: true
+                });
+
+                marker.on('click', () => {
+                    if (marker.setZIndexOffset) marker.setZIndexOffset(1000);
+                    openBottomSheet(place);
+                });
+
+                markersLayer.addLayer(marker);
+            });
         });
     }
 
@@ -802,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('photo-placeholder').classList.remove('hidden');
     }
 
-    /* --- 11. 장소 등록/수정/삭제 (인증 기반 Firestore 저장) --- */
+    /* --- 11. 장소 등록/수정/삭제 --- */
     document.getElementById('addPlaceBtn').addEventListener('click', () => {
         pickingLocation = true;
         closeBottomSheet();
