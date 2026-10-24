@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>우리동네 스팟 공유</title>
     
-    <!-- PWA 매니페스트 및 서비스 워커 인라인 등록 -->
+    <!-- PWA 매니페스트 및 서비스 워커 등록 -->
     <link rel="manifest" id="manifest-link">
     <script>
         const manifest = {
@@ -37,9 +37,15 @@
         }
     </script>
 
+    <!-- UI 스타일 및 지도 라이브러리 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- 구글 파이어베이스 SDK (v10 호환 모드) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
     <style>
         body { 
             margin: 0; padding: 0; 
@@ -64,6 +70,9 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* 줌 컨트롤러(+,-) 완전 차단 */
+        .leaflet-control-zoom { display: none !important; }
+
         .marker-pulse { animation: pulse 2s infinite; }
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
@@ -105,7 +114,7 @@
             <!-- 검색창, 언어 설정, 비밀 로그인 -->
             <div class="flex items-center gap-2 pointer-events-auto">
                 <div class="flex-1 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-black/[0.06] flex items-center px-3.5 py-2.5 relative">
-                    <!-- 돋보기 아이콘 (3회 터치 시 해시 비밀 로그인) -->
+                    <!-- 돋보기 아이콘 (3회 터치 시 관리자 인증 모달) -->
                     <button id="secret-login-btn" class="mr-2 text-gray-400 active:text-gray-600 focus:outline-none flex-shrink-0" aria-label="Search">
                         <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -123,7 +132,6 @@
                         <span>🌐</span>
                         <span id="current-lang-text">KO</span>
                     </button>
-                    <!-- 언어 드롭다운 메뉴 -->
                     <div id="lang-menu" class="hidden absolute right-0 mt-1 w-28 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-1 z-[60]">
                         <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('ko')">한국어 <span>🇰🇷</span></button>
                         <button class="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 flex items-center justify-between" onclick="changeLang('en')">English <span>🇺🇸</span></button>
@@ -142,11 +150,11 @@
                 </div>
             </div>
 
-            <!-- 실시간 검색 리스트 드롭다운 -->
+            <!-- 실시간 검색 목록 -->
             <div id="search-suggestions" class="hidden pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-black/[0.06] overflow-hidden max-h-60 overflow-y-auto no-scrollbar">
             </div>
 
-            <!-- 카테고리 칩 -->
+            <!-- 카테고리 태그 칩 -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto pb-1" id="categoryChips">
             </div>
         </div>
@@ -159,10 +167,10 @@
         </div>
     </div>
 
-    <!-- 지도 본체 -->
+    <!-- 지도 화면 -->
     <div id="map"></div>
 
-    <!-- 지도 위 우하단 액션 버튼들 (GPS + 등록) -->
+    <!-- 우측 하단 버튼군 (내 위치 + 제작자 등록 FAB) -->
     <div class="absolute bottom-6 right-4 z-[50] flex flex-col items-end gap-3 pointer-events-auto pb-[env(safe-area-inset-bottom)]">
         <!-- 내 위치(GPS) 버튼 -->
         <button id="gps-btn" class="bg-white/95 backdrop-blur-md text-gray-700 w-12 h-12 rounded-full shadow-lg border border-black/[0.06] flex items-center justify-center text-xl active:bg-gray-100 transition" aria-label="My Location">
@@ -184,7 +192,7 @@
         </div>
     </div>
 
-    <!-- 위치 확정 FAB -->
+    <!-- 위치 확정 버튼 -->
     <div id="confirm-location-fab" class="hidden absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[50] pointer-events-auto pb-[env(safe-area-inset-bottom)] w-[90%] max-w-sm">
         <button id="confirmLocationBtn" class="w-full bg-blue-600 text-white py-4 rounded-full shadow-xl text-lg font-bold active:bg-blue-700">
             📍 이 위치로 지정하기
@@ -195,7 +203,7 @@
 
 <!-- 모달 & 바텀시트 UI -->
 
-<!-- 해시 검증 비밀번호 입력 모달 -->
+<!-- 관리자 인증 모달 -->
 <div id="password-modal" class="hidden fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-xs p-6 text-center shadow-2xl border border-gray-100">
         <h2 class="text-lg font-bold mb-1.5 text-gray-900" id="pwd-modal-title">제작자 모드 인증</h2>
@@ -304,7 +312,7 @@
     </div>
 </div>
 
-<!-- 공통 알림 모달 -->
+<!-- 공통 안내 팝업 모달 -->
 <div id="alert-modal" class="hidden fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl w-full max-w-xs p-6 text-center shadow-2xl">
         <h3 class="text-base font-bold text-gray-900 mb-2" id="alert-title">알림</h3>
@@ -316,7 +324,21 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* --- 다국어 번역 사전 --- */
+    /* --- 1. 파이어베이스 초기화 --- */
+    const firebaseConfig = {
+        apiKey: "AIzaSyBmII06K6S8O6r7HitNSfILvClr8LVkGkE",
+        authDomain: "open-eat-map.firebaseapp.com",
+        projectId: "open-eat-map",
+        storageBucket: "open-eat-map.firebasestorage.app",
+        messagingSenderId: "729210257648",
+        appId: "1:729210257648:web:c23b9bcd10354d2d988235",
+        measurementId: "G-DE5SGHCKZY"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    /* --- 2. 다국어 번역 사전 --- */
     let currentLang = localStorage.getItem('app_lang') || 'ko';
     
     const i18n = {
@@ -405,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.addEventListener('click', () => document.getElementById('lang-menu').classList.add('hidden'));
 
-    /* --- 알림 모달 헬퍼 --- */
     function showAlert(msg) {
         document.getElementById('alert-title').textContent = i18n[currentLang].alertTitle;
         document.getElementById('alert-message').textContent = msg;
@@ -415,9 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('alert-modal').classList.add('hidden');
     });
 
-    /* --- 데이터 초기화 --- */
-    let places = JSON.parse(localStorage.getItem('places')) || [];
-    let categories = JSON.parse(localStorage.getItem('categories')) || ['전체', 'GS25', '카페', '식당', '쇼핑', '문화', '핫플'];
+    /* --- 3. 데이터 상태 관리 (Firestore 연동) --- */
+    let places = [];
+    let categories = ['전체', 'GS25', '카페', '식당', '쇼핑', '문화', '핫플'];
     let currentFilter = '전체';
     
     let isCreatorMode = false;
@@ -427,7 +448,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTempLocation = null;
     let tempCompressedImage = null;
 
-    /* --- 지도 초기화 (줌 컨트롤 제거 완료) --- */
+    // 카테고리 실시간 구독
+    db.collection("meta").doc("categories").onSnapshot((doc) => {
+        if (doc.exists && doc.data().list) {
+            categories = doc.data().list;
+        } else {
+            db.collection("meta").doc("categories").set({ list: categories });
+        }
+        renderCategories();
+    });
+
+    // 장소 목록 실시간 구독 (전 기기 자동 동기화)
+    db.collection("places").onSnapshot((snapshot) => {
+        places = [];
+        snapshot.forEach((doc) => {
+            places.push({ id: doc.id, ...doc.data() });
+        });
+        renderCategories();
+        renderMarkers();
+    }, (error) => {
+        console.error("Firestore 동기화 에러:", error);
+    });
+
+    /* --- 4. 지도 초기화 --- */
     const map = L.map('map', { 
         zoomControl: false, 
         attributionControl: false 
@@ -436,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     const markersLayer = L.layerGroup().addTo(map);
 
-    /* --- GPS 내 위치 추적 --- */
+    /* --- 5. GPS 내 위치 추적 --- */
     let userLocationMarker = null;
     let userAccuracyCircle = null;
 
@@ -479,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 });
     });
 
-    /* --- SHA-256 해시 비밀번호 로직 (원본 주석 완전 삭제) --- */
+    /* --- 6. SHA-256 해시 비밀번호 로직 --- */
     async function sha256(message) {
         const msgBuffer = new TextEncoder().encode(message);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -537,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBottomSheet();
     });
 
-    /* --- 카테고리 & 마커 렌더링 --- */
+    /* --- 7. 카테고리 & 마커 렌더링 --- */
     function renderCategories() {
         const chipsContainer = document.getElementById('categoryChips');
         chipsContainer.innerHTML = '';
@@ -599,13 +642,15 @@ document.addEventListener('DOMContentLoaded', () => {
         markersLayer.clearLayers();
         let filtered = currentFilter === '전체' ? places : places.filter(p => p.category === currentFilter);
         filtered.forEach(place => {
-            const marker = L.marker([place.lat, place.lng], { icon: getCustomIcon(place) });
-            marker.on('click', () => openBottomSheet(place));
-            markersLayer.addLayer(marker);
+            if (place.lat && place.lng) {
+                const marker = L.marker([place.lat, place.lng], { icon: getCustomIcon(place) });
+                marker.on('click', () => openBottomSheet(place));
+                markersLayer.addLayer(marker);
+            }
         });
     }
 
-    /* --- 검색 목록 & 하이라이트 --- */
+    /* --- 8. 검색 목록 & 하이라이트 --- */
     const searchInput = document.getElementById('searchInput');
     const searchSuggestions = document.getElementById('search-suggestions');
     const searchClearBtn = document.getElementById('search-clear-btn');
@@ -621,10 +666,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const filtered = places.filter(p => {
-            const tTitle = translateText(p.title).toLowerCase();
-            const tCat = translateText(p.category).toLowerCase();
-            return p.title.toLowerCase().includes(val) || 
-                   p.category.toLowerCase().includes(val) || 
+            const tTitle = translateText(p.title || '').toLowerCase();
+            const tCat = translateText(p.category || '').toLowerCase();
+            return (p.title && p.title.toLowerCase().includes(val)) || 
+                   (p.category && p.category.toLowerCase().includes(val)) || 
                    tTitle.includes(val) || 
                    tCat.includes(val);
         });
@@ -636,8 +681,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         searchSuggestions.innerHTML = filtered.map(p => {
-            const dispTitle = translateText(p.title);
-            const dispCat = translateText(p.category);
+            const dispTitle = translateText(p.title || '');
+            const dispCat = translateText(p.category || '');
             
             const regex = new RegExp(`(${val})`, 'gi');
             const highlightedTitle = dispTitle.replace(regex, '<span class="text-blue-600 font-extrabold">$1</span>');
@@ -670,8 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {
     searchSuggestions.addEventListener('click', (e) => {
         const item = e.target.closest('.suggestion-item');
         if (!item) return;
-        const placeId = Number(item.dataset.id);
-        const place = places.find(p => p.id === placeId);
+        const placeId = item.dataset.id;
+        const place = places.find(p => String(p.id) === String(placeId));
         if (place) {
             searchSuggestions.classList.add('hidden');
             map.flyTo([place.lat, place.lng], 18, { animate: true, duration: 1 });
@@ -679,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /* --- 바텀시트 & 라이트박스 --- */
+    /* --- 9. 바텀시트 & 라이트박스 --- */
     const bottomSheet = document.getElementById('bottom-sheet');
     let currentOpenPlace = null;
 
@@ -723,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     lightbox.addEventListener('click', () => lightbox.classList.add('hidden'));
 
-    /* --- 사진 업로드 & 캔버스 압축 --- */
+    /* --- 10. 사진 압축 처리 --- */
     document.getElementById('input-photo').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -737,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (width > 800) { height *= 800 / width; width = 800; }
                 canvas.width = width; canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
-                tempCompressedImage = canvas.toDataURL('image/jpeg', 0.8);
+                tempCompressedImage = canvas.toDataURL('image/jpeg', 0.7);
                 
                 document.getElementById('photo-preview').src = tempCompressedImage;
                 document.getElementById('photo-preview-container').classList.remove('hidden');
@@ -755,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('photo-placeholder').classList.remove('hidden');
     }
 
-    /* --- 장소 추가 / 수정 / 삭제 --- */
+    /* --- 11. 장소 추가 / 수정 / 삭제 (Firestore 저장) --- */
     document.getElementById('addPlaceBtn').addEventListener('click', () => {
         pickingLocation = true;
         closeBottomSheet();
@@ -791,20 +836,47 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!title) return showAlert('장소명을 입력해주세요.');
         if(!link) return showAlert('링크를 입력해주세요.');
 
-        if (editingId) {
-            const idx = places.findIndex(p => p.id === editingId);
-            if(idx > -1) {
-                places[idx].title = title; places[idx].category = category; places[idx].link = link;
-                if(currentTempLocation) { places[idx].lat = currentTempLocation.lat; places[idx].lng = currentTempLocation.lng; }
-                if(tempCompressedImage) places[idx].image = tempCompressedImage;
-            }
-        } else {
-            places.push({ id: Date.now(), lat: currentTempLocation.lat, lng: currentTempLocation.lng, title, category, link, image: tempCompressedImage });
-        }
+        const saveBtn = document.getElementById('save-place-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = "저장 중...";
 
-        localStorage.setItem('places', JSON.stringify(places));
-        document.getElementById('place-form-modal').classList.add('hidden');
-        renderCategories(); renderMarkers();
+        const placeData = {
+            title,
+            category,
+            link,
+            image: tempCompressedImage || (editingId && currentOpenPlace ? currentOpenPlace.image : null),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (editingId) {
+            if (currentTempLocation) {
+                placeData.lat = currentTempLocation.lat;
+                placeData.lng = currentTempLocation.lng;
+            }
+            db.collection("places").doc(editingId).update(placeData).then(() => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "저장하기";
+                document.getElementById('place-form-modal').classList.add('hidden');
+            }).catch(err => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "저장하기";
+                showAlert("수정 중 오류가 발생했습니다: " + err.message);
+            });
+        } else {
+            placeData.lat = currentTempLocation.lat;
+            placeData.lng = currentTempLocation.lng;
+            placeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+            db.collection("places").add(placeData).then(() => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "저장하기";
+                document.getElementById('place-form-modal').classList.add('hidden');
+            }).catch(err => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "저장하기";
+                showAlert("등록 중 오류가 발생했습니다: " + err.message);
+            });
+        }
     });
 
     document.getElementById('edit-place-btn').addEventListener('click', () => {
@@ -828,13 +900,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('delete-place-btn').addEventListener('click', () => {
         if(!currentOpenPlace) return;
         if(confirm(`'${currentOpenPlace.title}' 장소를 삭제하시겠습니까?`)) {
-            places = places.filter(p => p.id !== currentOpenPlace.id);
-            localStorage.setItem('places', JSON.stringify(places));
-            closeBottomSheet(); renderCategories(); renderMarkers();
+            db.collection("places").doc(currentOpenPlace.id).delete().then(() => {
+                closeBottomSheet();
+            }).catch(err => {
+                showAlert("삭제 실패: " + err.message);
+            });
         }
     });
 
-    /* --- 카테고리 관리 --- */
+    /* --- 12. 카테고리 관리 (Firestore 동기화) --- */
     document.getElementById('open-category-admin').addEventListener('click', () => {
         document.getElementById('category-admin-modal').classList.remove('hidden');
         renderCategoryAdmin();
@@ -864,33 +938,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-category-btn').addEventListener('click', () => {
         const val = document.getElementById('new-category-input').value.trim();
         if(val && !categories.includes(val)) {
-            categories.push(val); localStorage.setItem('categories', JSON.stringify(categories));
-            document.getElementById('new-category-input').value = ''; renderCategoryAdmin();
+            categories.push(val);
+            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+                document.getElementById('new-category-input').value = '';
+                renderCategoryAdmin();
+            });
         }
     });
 
     window.updateCategory = (oldCat) => {
         const val = document.getElementById(`cat-edit-${oldCat}`).value.trim();
         if(val && val !== oldCat && !categories.includes(val)) {
-            categories[categories.indexOf(oldCat)] = val;
-            places.forEach(p => { if(p.category === oldCat) p.category = val; });
-            localStorage.setItem('categories', JSON.stringify(categories));
-            localStorage.setItem('places', JSON.stringify(places));
-            renderCategoryAdmin();
+            const idx = categories.indexOf(oldCat);
+            categories[idx] = val;
+            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+                renderCategoryAdmin();
+            });
         }
     };
 
     window.deleteCategory = (cat) => {
         if(confirm(`'${cat}' 카테고리를 삭제할까요?`)) {
             categories = categories.filter(c => c !== cat);
-            places.forEach(p => { if(p.category === cat) p.category = categories[1] || '전체'; });
-            localStorage.setItem('categories', JSON.stringify(categories));
-            localStorage.setItem('places', JSON.stringify(places));
-            renderCategoryAdmin();
+            db.collection("meta").doc("categories").update({ list: categories }).then(() => {
+                renderCategoryAdmin();
+            });
         }
     };
 
-    // 초기 실행
+    // 초기 언어 실행
     applyLanguageUI();
 });
 </script>
